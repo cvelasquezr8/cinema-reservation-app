@@ -13,31 +13,48 @@ import {
 import { Link, router } from 'expo-router';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
 import api from 'lib/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import GoogleButton from '@/components/google-login.button';
 
 export default function LoginScreen() {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
-	const [errors, setErrors] = useState<{ email?: string; password?: string }>(
-		{},
-	);
+	const [errors, setErrors] = useState<{
+		email?: string;
+		password?: string;
+	}>({});
 
-	const isFormValid = () =>
-		/\S+@\S+\.\S+/.test(email) && password.length >= 6;
+	const isFormValid = () => {
+		const passwordRegex =
+			/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/;
+
+		return (
+			/\S+@\S+\.\S+/.test(email) &&
+			password.length >= 6 &&
+			passwordRegex.test(password)
+		);
+	};
 
 	const validate = () => {
 		const newErrors: typeof errors = {};
 
-		if (!email) {
-			newErrors.email = 'Email is required';
-		} else if (!/\S+@\S+\.\S+/.test(email)) {
+		if (!email) newErrors.email = 'Email is required';
+		else if (!/\S+@\S+\.\S+/.test(email))
 			newErrors.email = 'Invalid email format';
-		}
 
 		if (!password) {
 			newErrors.password = 'Password is required';
 		} else if (password.length < 6) {
 			newErrors.password = 'Password must be at least 6 characters';
+		} else {
+			const passwordRegex =
+				/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/;
+
+			if (!passwordRegex.test(password)) {
+				newErrors.password =
+					'Password must include uppercase, lowercase, and a number or symbol';
+			}
 		}
 
 		setErrors(newErrors);
@@ -53,7 +70,10 @@ export default function LoginScreen() {
 				password,
 			});
 
-			console.log({ response });
+			const result = response.data;
+			const { token } = result.data;
+			await AsyncStorage.setItem('token', token);
+			router.replace('/(tabs)/movies');
 		} catch (error: any) {
 			if (error.response?.status === 401) {
 				setErrors({ password: 'Invalid credentials' });
@@ -61,19 +81,6 @@ export default function LoginScreen() {
 				console.error('Login error:', error);
 			}
 		}
-
-		// const mockEmail = 'test@example.com';
-		// const mockPassword = '123456';
-
-		// if (email === mockEmail && password === mockPassword) {
-		// 	router.replace('/(tabs)/movies'); // redirige a la pantalla principal
-		// } else {
-		// 	// Alert.alert('Invalid credentials', 'Try test@example.com / 123456');
-		// }
-	};
-
-	const handleSocialLogin = (provider: string) => {
-		console.log(`Login with ${provider}`);
 	};
 
 	return (
@@ -177,41 +184,8 @@ export default function LoginScreen() {
 					</View>
 
 					{/* Social login buttons */}
-					<View style={styles.socialButtons}>
-						<TouchableOpacity
-							style={styles.socialButton}
-							onPress={() => handleSocialLogin('Google')}
-						>
-							<Image
-								source={{
-									uri: 'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
-								}}
-								style={styles.socialIcon}
-							/>
-							<Text style={styles.socialText}>Google</Text>
-						</TouchableOpacity>
-
-						<TouchableOpacity
-							style={styles.socialButton}
-							onPress={() => handleSocialLogin('Facebook')}
-						>
-							<Image
-								source={{
-									uri: 'https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png',
-								}}
-								style={styles.socialIcon}
-							/>
-							<Text style={styles.socialText}>Facebook</Text>
-						</TouchableOpacity>
-					</View>
-
-					<View style={styles.signupContainer}>
-						<Text style={styles.signupText}>
-							Don't have an account?{' '}
-						</Text>
-						<Link href="/signup" style={styles.signupLink}>
-							Sign up
-						</Link>
+					<View style={styles.googleContainer}>
+						<GoogleButton setErrors={setErrors} isLogin={true} />
 					</View>
 				</View>
 			</ScrollView>
@@ -307,43 +281,8 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		fontSize: 14,
 	},
-	socialButtons: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		marginBottom: 24,
-	},
-	socialButton: {
-		flexDirection: 'row',
+	googleContainer: {
 		alignItems: 'center',
-		backgroundColor: '#f5f5f5',
-		paddingVertical: 10,
-		paddingHorizontal: 16,
-		borderRadius: 12,
-		flex: 1,
-		justifyContent: 'center',
-		marginHorizontal: 6,
-	},
-	socialIcon: {
-		width: 20,
-		height: 20,
-		marginRight: 8,
-		resizeMode: 'contain',
-	},
-	socialText: {
-		fontSize: 16,
-		color: '#1a1a1a',
-	},
-	signupContainer: {
-		flexDirection: 'row',
-		justifyContent: 'center',
-	},
-	signupText: {
-		color: '#666',
-		fontSize: 16,
-	},
-	signupLink: {
-		color: '#E50914',
-		fontSize: 16,
-		fontWeight: '600',
+		marginBottom: 24,
 	},
 });

@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import api from 'lib/api';
 
 interface GoogleButtonProps {
-	setErrors: (errors: { name: string }) => void;
+	setErrors: (errors: { email: string }) => void;
 	isLogin: boolean;
 }
 
@@ -34,7 +34,7 @@ export default function GoogleButton({
 			router.replace('/(tabs)/movies');
 		} catch (error) {
 			console.error('Google login error:', error);
-			setErrors({ name: 'Google login failed. Try again later.' });
+			setErrors({ email: 'Google login failed. Try again later.' });
 		}
 	};
 
@@ -45,7 +45,7 @@ export default function GoogleButton({
 				promptAsync().catch((e) => {
 					console.error('Google login prompt error:', e);
 					setErrors({
-						name: 'Google login failed. Try again later.',
+						email: 'Google login failed. Try again later.',
 					});
 				})
 			}
