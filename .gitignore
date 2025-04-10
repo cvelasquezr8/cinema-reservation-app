@@ -37,15 +37,14 @@ ios/build/
 ios/DerivedData/
 ios/.bundle/
 ios/*.xcuserstate
-ios/*.xcworkspace
-ios/*.xcodeproj/project.xcworkspace/
 ios/*.xcworkspace/xcshareddata/
 ios/*.xcworkspace/xcuserdata/
 *.xcuserstate
 
-# Keep the necessary project files
+# Mantener archivos necesarios del proyecto
 !ios/*.xcodeproj/project.pbxproj
 !ios/*.xcodeproj/xcshareddata/
+!ios/*.xcworkspace/contents.xcworkspacedata
 
 # -----------------------------
 # Debug / Logs

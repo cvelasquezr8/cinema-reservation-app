@@ -1,8 +1,12 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 const api = axios.create({
-	baseURL: process.env.EXPO_PUBLIC_API_URL,
+	baseURL:
+		Platform.OS === 'ios'
+			? process.env.EXPO_PUBLIC_API_IOS_URL
+			: process.env.EXPO_PUBLIC_API_ANDROID_URL,
 	timeout: 10000,
 	headers: {
 		Accept: 'application/json',

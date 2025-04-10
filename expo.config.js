@@ -28,8 +28,8 @@ export default {
     favicon: './assets/favicon.png',
   },
   extra: {
-    EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
+    EXPO_PUBLIC_API_IOS_URL: process.env.EXPO_PUBLIC_API_IOS_URL,
+    EXPO_PUBLIC_API_ANDROID_URL: process.env.EXPO_PUBLIC_API_ANDROID_URL,
     EXPO_PUBLIC_GOOGLE_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
-    EXPO_PUBLIC_REDIRECT_URI: process.env.EXPO_PUBLIC_REDIRECT_URI,
   },
 };

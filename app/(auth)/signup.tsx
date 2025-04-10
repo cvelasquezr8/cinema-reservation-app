@@ -23,7 +23,7 @@ import {
 } from 'lucide-react-native';
 import api from 'lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useGoogleAuth } from 'lib/auth/useGoogleAuth';
+import GoogleButton from '@/components/google-login.button';
 
 export default function SignUpScreen() {
 	const [fullName, setFullName] = useState('');
@@ -35,17 +35,6 @@ export default function SignUpScreen() {
 		email?: string;
 		password?: string;
 	}>({});
-	const [request, response, promptAsync] = useGoogleAuth();
-	// console.log({ request, response });
-	useEffect(() => {
-		if (response?.type === 'success' && response.authentication) {
-			const { accessToken, idToken } = response.authentication;
-
-			if (accessToken && idToken) {
-				handleGoogleSignUp(accessToken, idToken);
-			}
-		}
-	}, [response]);
 
 	const isFormValid = () => {
 		const passwordRegex =
@@ -84,26 +73,6 @@ export default function SignUpScreen() {
 
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
-	};
-
-	const handleGoogleSignUp = async (accessToken: string, idToken: string) => {
-		try {
-			console.log({ accessToken, idToken });
-
-			const response = await api.post('/auth/google', {
-				accessToken,
-				idToken,
-			});
-
-			console.log({ response });
-
-			const { token } = response.data.data;
-			await AsyncStorage.setItem('token', token);
-			router.replace('/(tabs)/movies');
-		} catch (err) {
-			console.error('Google sign-up error', err);
-			setErrors({ name: 'Google sign-up failed. Try again later.' });
-		}
 	};
 
 	const handleSignUp = async () => {
@@ -279,31 +248,10 @@ export default function SignUpScreen() {
 						{/* Social login buttons */}
 						{/* Google Sign Up only */}
 						<View style={styles.googleContainer}>
-							<TouchableOpacity
-								style={styles.googleButton}
-								disabled={!request}
-								onPress={() =>
-									promptAsync().catch((e) => {
-										console.error(
-											'Google sign-up error',
-											e,
-										);
-										setErrors({
-											name: 'Google sign-up failed. Try again later.',
-										});
-									})
-								}
-							>
-								<Image
-									source={{
-										uri: 'https://developers.google.com/identity/images/g-logo.png',
-									}}
-									style={styles.googleIcon}
-								/>
-								<Text style={styles.googleText}>
-									Sign up with Google
-								</Text>
-							</TouchableOpacity>
+							<GoogleButton
+								setErrors={setErrors}
+								isLogin={false}
+							/>
 						</View>
 					</View>
 				</ScrollView>
@@ -419,34 +367,5 @@ const styles = StyleSheet.create({
 	googleContainer: {
 		alignItems: 'center',
 		marginBottom: 24,
-	},
-	googleButton: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		backgroundColor: '#fff',
-		borderColor: '#e1e1e1',
-		borderWidth: 1,
-		paddingVertical: 14,
-		paddingHorizontal: 20,
-		borderRadius: 12,
-		width: '80%',
-		justifyContent: 'center',
-		shadowColor: '#000',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.1,
-		shadowRadius: 6,
-		elevation: 3,
-	},
-	googleIcon: {
-		width: 26,
-		height: 26,
-		marginRight: 12,
-		resizeMode: 'contain',
-		backgroundColor: '#eee',
-	},
-	googleText: {
-		fontSize: 16,
-		color: '#1a1a1a',
-		fontWeight: '600',
 	},
 });
