@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
 	View,
 	Text,
 	TextInput,
 	TouchableOpacity,
-	StyleSheet,
 	KeyboardAvoidingView,
 	Platform,
 	ScrollView,
 	Image,
+	StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -21,9 +21,12 @@ import {
 	Eye,
 	EyeOff,
 } from 'lucide-react-native';
+import api from 'lib/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useGoogleAuth } from 'lib/auth/useGoogleAuth';
 
 export default function SignUpScreen() {
-	const [name, setName] = useState('');
+	const [fullName, setFullName] = useState('');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [showPassword, setShowPassword] = useState(false);
@@ -32,35 +35,98 @@ export default function SignUpScreen() {
 		email?: string;
 		password?: string;
 	}>({});
+	const [request, response, promptAsync] = useGoogleAuth();
+	// console.log({ request, response });
+	useEffect(() => {
+		if (response?.type === 'success' && response.authentication) {
+			const { accessToken, idToken } = response.authentication;
 
-	const isFormValid = () =>
-		name.trim().length > 0 &&
-		/\S+@\S+\.\S+/.test(email) &&
-		password.length >= 6;
+			if (accessToken && idToken) {
+				handleGoogleSignUp(accessToken, idToken);
+			}
+		}
+	}, [response]);
+
+	const isFormValid = () => {
+		const passwordRegex =
+			/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/;
+
+		return (
+			fullName.trim().length > 0 &&
+			/\S+@\S+\.\S+/.test(email) &&
+			password.length >= 6 &&
+			passwordRegex.test(password)
+		);
+	};
 
 	const validate = () => {
 		const newErrors: typeof errors = {};
 
-		if (!name.trim()) newErrors.name = 'Name is required';
+		if (!fullName.trim()) newErrors.name = 'Name is required';
+
 		if (!email) newErrors.email = 'Email is required';
 		else if (!/\S+@\S+\.\S+/.test(email))
 			newErrors.email = 'Invalid email format';
-		if (!password) newErrors.password = 'Password is required';
-		else if (password.length < 6)
+
+		if (!password) {
+			newErrors.password = 'Password is required';
+		} else if (password.length < 6) {
 			newErrors.password = 'Password must be at least 6 characters';
+		} else {
+			const passwordRegex =
+				/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/;
+
+			if (!passwordRegex.test(password)) {
+				newErrors.password =
+					'Password must include uppercase, lowercase, and a number or symbol';
+			}
+		}
 
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
 	};
 
-	const handleSignUp = () => {
-		if (validate()) {
-			console.log('Sign up with:', { name, email, password });
+	const handleGoogleSignUp = async (accessToken: string, idToken: string) => {
+		try {
+			console.log({ accessToken, idToken });
+
+			const response = await api.post('/auth/google', {
+				accessToken,
+				idToken,
+			});
+
+			console.log({ response });
+
+			const { token } = response.data.data;
+			await AsyncStorage.setItem('token', token);
+			router.replace('/(tabs)/movies');
+		} catch (err) {
+			console.error('Google sign-up error', err);
+			setErrors({ name: 'Google sign-up failed. Try again later.' });
 		}
 	};
 
-	const handleSocialSignUp = (provider: string) => {
-		console.log(`Sign up with ${provider}`);
+	const handleSignUp = async () => {
+		if (!validate()) return;
+
+		try {
+			const response = await api.post('/auth/register', {
+				fullName,
+				email,
+				password,
+			});
+
+			const result = response.data;
+			if (!result) return setErrors({ name: 'Invalid response' });
+			if (result.statusCode !== 201 || !result.data)
+				return setErrors({ name: result.message });
+
+			const { token } = result.data;
+			await AsyncStorage.setItem('token', token);
+			router.replace('/(tabs)/movies');
+		} catch (error: any) {
+			setErrors({ name: 'Server error, please try again later.' });
+		}
 	};
 
 	return (
@@ -99,9 +165,9 @@ export default function SignUpScreen() {
 							<TextInput
 								style={styles.input}
 								placeholder="Full Name"
-								value={name}
+								value={fullName}
 								onChangeText={(text) => {
-									setName(text);
+									setFullName(text);
 									setErrors((e) => ({
 										...e,
 										name: undefined,
@@ -211,31 +277,32 @@ export default function SignUpScreen() {
 						</View>
 
 						{/* Social login buttons */}
-						<View style={styles.socialButtons}>
+						{/* Google Sign Up only */}
+						<View style={styles.googleContainer}>
 							<TouchableOpacity
-								style={styles.socialButton}
-								onPress={() => handleSocialSignUp('Google')}
+								style={styles.googleButton}
+								disabled={!request}
+								onPress={() =>
+									promptAsync().catch((e) => {
+										console.error(
+											'Google sign-up error',
+											e,
+										);
+										setErrors({
+											name: 'Google sign-up failed. Try again later.',
+										});
+									})
+								}
 							>
 								<Image
 									source={{
-										uri: 'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg',
+										uri: 'https://developers.google.com/identity/images/g-logo.png',
 									}}
-									style={styles.socialIcon}
+									style={styles.googleIcon}
 								/>
-								<Text style={styles.socialText}>Google</Text>
-							</TouchableOpacity>
-
-							<TouchableOpacity
-								style={styles.socialButton}
-								onPress={() => handleSocialSignUp('Facebook')}
-							>
-								<Image
-									source={{
-										uri: 'https://upload.wikimedia.org/wikipedia/commons/0/05/Facebook_Logo_%282019%29.png',
-									}}
-									style={styles.socialIcon}
-								/>
-								<Text style={styles.socialText}>Facebook</Text>
+								<Text style={styles.googleText}>
+									Sign up with Google
+								</Text>
 							</TouchableOpacity>
 						</View>
 					</View>
@@ -292,8 +359,14 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 16,
 		height: 56,
 	},
-	inputIcon: { marginRight: 12 },
-	input: { flex: 1, fontSize: 16, color: '#1a1a1a' },
+	inputIcon: {
+		marginRight: 12,
+	},
+	input: {
+		flex: 1,
+		fontSize: 16,
+		color: '#1a1a1a',
+	},
 	errorText: {
 		color: '#E50914',
 		fontSize: 13,
@@ -343,29 +416,37 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 12,
 		fontSize: 14,
 	},
-	socialButtons: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
+	googleContainer: {
+		alignItems: 'center',
+		marginBottom: 24,
 	},
-	socialButton: {
+	googleButton: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: '#f5f5f5',
-		paddingVertical: 10,
-		paddingHorizontal: 16,
+		backgroundColor: '#fff',
+		borderColor: '#e1e1e1',
+		borderWidth: 1,
+		paddingVertical: 14,
+		paddingHorizontal: 20,
 		borderRadius: 12,
-		flex: 1,
+		width: '80%',
 		justifyContent: 'center',
-		marginHorizontal: 6,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.1,
+		shadowRadius: 6,
+		elevation: 3,
 	},
-	socialIcon: {
-		width: 20,
-		height: 20,
-		marginRight: 8,
+	googleIcon: {
+		width: 26,
+		height: 26,
+		marginRight: 12,
 		resizeMode: 'contain',
+		backgroundColor: '#eee',
 	},
-	socialText: {
+	googleText: {
 		fontSize: 16,
 		color: '#1a1a1a',
+		fontWeight: '600',
 	},
 });

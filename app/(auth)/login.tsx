@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
+import api from 'lib/api';
 
 export default function LoginScreen() {
 	const [email, setEmail] = useState('');
@@ -43,15 +44,32 @@ export default function LoginScreen() {
 		return Object.keys(newErrors).length === 0;
 	};
 
-	const handleLogin = () => {
-		const mockEmail = 'test@example.com';
-		const mockPassword = '123456';
+	const handleLogin = async () => {
+		if (!validate()) return;
 
-		if (email === mockEmail && password === mockPassword) {
-			router.replace('/(tabs)/movies'); // redirige a la pantalla principal
-		} else {
-			// Alert.alert('Invalid credentials', 'Try test@example.com / 123456');
+		try {
+			const response = await api.post('/auth/login', {
+				email,
+				password,
+			});
+
+			console.log({ response });
+		} catch (error: any) {
+			if (error.response?.status === 401) {
+				setErrors({ password: 'Invalid credentials' });
+			} else {
+				console.error('Login error:', error);
+			}
 		}
+
+		// const mockEmail = 'test@example.com';
+		// const mockPassword = '123456';
+
+		// if (email === mockEmail && password === mockPassword) {
+		// 	router.replace('/(tabs)/movies'); // redirige a la pantalla principal
+		// } else {
+		// 	// Alert.alert('Invalid credentials', 'Try test@example.com / 123456');
+		// }
 	};
 
 	const handleSocialLogin = (provider: string) => {
