@@ -4,7 +4,6 @@ import {
 	Text,
 	TextInput,
 	TouchableOpacity,
-	StyleSheet,
 	Image,
 	KeyboardAvoidingView,
 	Platform,
@@ -12,9 +11,10 @@ import {
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
-import api from 'lib/api';
+import GoogleButton from 'components/GoogleButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import GoogleButton from '@/components/google-login.button';
+import { loginUser } from 'services/authService';
+import loginStyle from 'styles/auth/login.style';
 
 export default function LoginScreen() {
 	const [email, setEmail] = useState('');
@@ -25,36 +25,19 @@ export default function LoginScreen() {
 		password?: string;
 	}>({});
 
-	const isFormValid = () => {
-		const passwordRegex =
-			/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/;
-
-		return (
-			/\S+@\S+\.\S+/.test(email) &&
-			password.length >= 6 &&
-			passwordRegex.test(password)
-		);
-	};
+	const isFormValid = () => /\S+@\S+\.\S+/.test(email) && password.length > 0;
 
 	const validate = () => {
 		const newErrors: typeof errors = {};
 
-		if (!email) newErrors.email = 'Email is required';
-		else if (!/\S+@\S+\.\S+/.test(email))
+		if (!email) {
+			newErrors.email = 'Email is required';
+		} else if (!/\S+@\S+\.\S+/.test(email)) {
 			newErrors.email = 'Invalid email format';
+		}
 
 		if (!password) {
 			newErrors.password = 'Password is required';
-		} else if (password.length < 6) {
-			newErrors.password = 'Password must be at least 6 characters';
-		} else {
-			const passwordRegex =
-				/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/;
-
-			if (!passwordRegex.test(password)) {
-				newErrors.password =
-					'Password must include uppercase, lowercase, and a number or symbol';
-			}
 		}
 
 		setErrors(newErrors);
@@ -65,54 +48,49 @@ export default function LoginScreen() {
 		if (!validate()) return;
 
 		try {
-			const response = await api.post('/auth/login', {
-				email,
-				password,
-			});
-
-			const result = response.data;
-			const { token } = result.data;
+			const response = await loginUser({ email, password });
+			const token = response?.data?.token;
+			if (!token) throw new Error('Invalid token');
 			await AsyncStorage.setItem('token', token);
 			router.replace('/(tabs)/movies');
 		} catch (error: any) {
-			if (error.response?.status === 401) {
-				setErrors({ password: 'Invalid credentials' });
-			} else {
-				console.error('Login error:', error);
-			}
+			console.error(error);
+			setErrors({ email: 'Invalid email or password' });
 		}
 	};
 
 	return (
 		<KeyboardAvoidingView
 			behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-			style={styles.container}
+			style={loginStyle.container}
 		>
 			<ScrollView contentContainerStyle={{ flexGrow: 1 }}>
 				{/* Hero */}
-				<View style={styles.heroSection}>
+				<View style={loginStyle.heroSection}>
 					<Image
-						source={{
-							uri: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800&h=500&fit=crop&crop=entropy',
-						}}
-						style={styles.heroImage}
+						source={require('assets/images/cinema-background.jpeg')}
+						style={loginStyle.heroImage}
 					/>
-					<View style={styles.overlay} />
-					<View style={styles.heroContent}>
-						<Text style={styles.welcomeText}>Welcome to</Text>
-						<Text style={styles.appName}>CineReserve</Text>
-						<Text style={styles.tagline}>
+					<View style={loginStyle.overlay} />
+					<View style={loginStyle.heroContent}>
+						<Text style={loginStyle.welcomeText}>Welcome to</Text>
+						<Text style={loginStyle.appName}>CineReserve</Text>
+						<Text style={loginStyle.tagline}>
 							Your premier movie booking experience
 						</Text>
 					</View>
 				</View>
 
 				{/* Form */}
-				<View style={styles.formContainer}>
-					<View style={styles.inputContainer}>
-						<Mail size={20} color="#666" style={styles.inputIcon} />
+				<View style={loginStyle.formContainer}>
+					<View style={loginStyle.inputContainer}>
+						<Mail
+							size={25}
+							color="#666"
+							style={loginStyle.inputIcon}
+						/>
 						<TextInput
-							style={styles.input}
+							style={loginStyle.input}
 							placeholder="Email"
 							value={email}
 							onChangeText={(text) => {
@@ -125,13 +103,17 @@ export default function LoginScreen() {
 						/>
 					</View>
 					{errors.email && (
-						<Text style={styles.errorText}>{errors.email}</Text>
+						<Text style={loginStyle.errorText}>{errors.email}</Text>
 					)}
 
-					<View style={styles.inputContainer}>
-						<Lock size={20} color="#666" style={styles.inputIcon} />
+					<View style={loginStyle.inputContainer}>
+						<Lock
+							size={25}
+							color="#666"
+							style={loginStyle.inputIcon}
+						/>
 						<TextInput
-							style={styles.input}
+							style={loginStyle.input}
 							placeholder="Password"
 							value={password}
 							onChangeText={(text) => {
@@ -148,43 +130,59 @@ export default function LoginScreen() {
 							onPress={() => setShowPassword(!showPassword)}
 						>
 							{showPassword ? (
-								<EyeOff size={20} color="#999" />
+								<EyeOff size={25} color="#999" />
 							) : (
-								<Eye size={20} color="#999" />
+								<Eye size={25} color="#999" />
 							)}
 						</TouchableOpacity>
 					</View>
 					{errors.password && (
-						<Text style={styles.errorText}>{errors.password}</Text>
+						<Text style={loginStyle.errorText}>
+							{errors.password}
+						</Text>
 					)}
 
-					<Link href="/forgot-password" style={styles.forgotPassword}>
-						<Text style={styles.forgotPasswordText}>
+					<Link
+						href="/forgot-password"
+						style={loginStyle.forgotPassword}
+					>
+						<Text style={loginStyle.forgotPasswordText}>
 							Forgot Password?
 						</Text>
 					</Link>
 
 					<TouchableOpacity
 						style={[
-							styles.loginButton,
-							!isFormValid() && styles.loginButtonDisabled,
+							loginStyle.loginButton,
+							!isFormValid() && loginStyle.loginButtonDisabled,
 						]}
 						onPress={handleLogin}
 						disabled={!isFormValid()}
 					>
-						<Text style={styles.loginButtonText}>Login</Text>
-						<ArrowRight size={20} color="#fff" />
+						<Text style={loginStyle.loginButtonText}>Login</Text>
+						<ArrowRight size={25} color="#fff" />
 					</TouchableOpacity>
 
-					{/* Divider */}
-					<View style={styles.divider}>
-						<View style={styles.dividerLine} />
-						<Text style={styles.dividerText}>or continue with</Text>
-						<View style={styles.dividerLine} />
+					<View style={loginStyle.signupContainer}>
+						<Text style={loginStyle.signupText}>
+							Don't have an account?{' '}
+						</Text>
+						<Link href="/signup" style={loginStyle.signupLink}>
+							Sign up
+						</Link>
 					</View>
 
-					{/* Social login buttons */}
-					<View style={styles.googleContainer}>
+					{/* Divider */}
+					<View style={loginStyle.divider}>
+						<View style={loginStyle.dividerLine} />
+						<Text style={loginStyle.dividerText}>
+							or continue with
+						</Text>
+						<View style={loginStyle.dividerLine} />
+					</View>
+
+					{/* Social login */}
+					<View style={loginStyle.googleContainer}>
 						<GoogleButton setErrors={setErrors} isLogin={true} />
 					</View>
 				</View>
@@ -192,97 +190,3 @@ export default function LoginScreen() {
 		</KeyboardAvoidingView>
 	);
 }
-
-const styles = StyleSheet.create({
-	container: { flex: 1, backgroundColor: '#fff' },
-	heroSection: { height: 300, position: 'relative' },
-	heroImage: { width: '100%', height: '100%' },
-	overlay: {
-		...StyleSheet.absoluteFillObject,
-		backgroundColor: 'rgba(0,0,0,0.5)',
-	},
-	heroContent: {
-		position: 'absolute',
-		bottom: 40,
-		left: 24,
-		right: 24,
-	},
-	welcomeText: { color: '#fff', fontSize: 20, marginBottom: 4 },
-	appName: {
-		color: '#fff',
-		fontSize: 36,
-		fontWeight: 'bold',
-		marginBottom: 8,
-	},
-	tagline: { color: '#fff', fontSize: 16, opacity: 0.9 },
-	formContainer: {
-		backgroundColor: '#fff',
-		borderTopLeftRadius: 24,
-		borderTopRightRadius: 24,
-		marginTop: -20,
-		padding: 24,
-	},
-	inputContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		backgroundColor: '#f5f5f5',
-		borderRadius: 12,
-		marginBottom: 8,
-		paddingHorizontal: 16,
-		height: 56,
-	},
-	inputIcon: { marginRight: 12 },
-	input: { flex: 1, fontSize: 16, color: '#1a1a1a' },
-	errorText: {
-		color: '#E50914',
-		fontSize: 13,
-		marginBottom: 12,
-		marginLeft: 8,
-	},
-	forgotPassword: {
-		alignSelf: 'flex-end',
-		marginBottom: 24,
-	},
-	forgotPasswordText: {
-		color: '#1e90ff',
-		fontWeight: 'bold',
-		fontSize: 14,
-	},
-	loginButton: {
-		backgroundColor: '#E50914',
-		borderRadius: 12,
-		height: 56,
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'center',
-		marginBottom: 24,
-	},
-	loginButtonDisabled: {
-		backgroundColor: '#ccc',
-	},
-	loginButtonText: {
-		color: '#fff',
-		fontSize: 18,
-		fontWeight: '600',
-		marginRight: 8,
-	},
-	divider: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		marginBottom: 24,
-	},
-	dividerLine: {
-		flex: 1,
-		height: 1,
-		backgroundColor: '#e1e1e1',
-	},
-	dividerText: {
-		color: '#666',
-		paddingHorizontal: 12,
-		fontSize: 14,
-	},
-	googleContainer: {
-		alignItems: 'center',
-		marginBottom: 24,
-	},
-});

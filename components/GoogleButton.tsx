@@ -1,9 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { TouchableOpacity, Image, Text, StyleSheet } from 'react-native';
-import { useGoogleAuth } from 'lib/auth/useGoogleAuth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
-import api from 'lib/api';
+import { useGoogleAuthViewModel } from 'features/auth/viewModels/useGoogleAuthViewModel';
 
 interface GoogleButtonProps {
 	setErrors: (errors: { email: string }) => void;
@@ -14,29 +11,7 @@ export default function GoogleButton({
 	setErrors,
 	isLogin,
 }: GoogleButtonProps) {
-	const [request, response, promptAsync] = useGoogleAuth();
-
-	useEffect(() => {
-		if (response?.type === 'success' && response.authentication) {
-			const { accessToken, idToken } = response.authentication;
-			if (accessToken && idToken) loginWithGoogle(accessToken, idToken);
-		}
-	}, [response]);
-
-	const loginWithGoogle = async (accessToken: string, idToken: string) => {
-		try {
-			const res = await api.post('/auth/google', {
-				accessToken,
-				idToken,
-			});
-			const { token } = res.data.data;
-			await AsyncStorage.setItem('token', token);
-			router.replace('/(tabs)/movies');
-		} catch (error) {
-			console.error('Google login error:', error);
-			setErrors({ email: 'Google login failed. Try again later.' });
-		}
-	};
+	const { promptAsync, request } = useGoogleAuthViewModel(setErrors);
 
 	return (
 		<TouchableOpacity
@@ -52,7 +27,7 @@ export default function GoogleButton({
 			style={styles.googleButton}
 		>
 			<Image
-				source={require('../../assets/images/google-logo.png')}
+				source={require('assets/images/google-logo.png')}
 				style={styles.googleIcon}
 			/>
 			<Text style={styles.googleText}>
@@ -88,7 +63,7 @@ const styles = StyleSheet.create({
 		backgroundColor: '#eee',
 	},
 	googleText: {
-		fontSize: 16,
+		fontSize: 20,
 		color: '#1a1a1a',
 		fontWeight: '600',
 	},

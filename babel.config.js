@@ -7,7 +7,7 @@ module.exports = function (api) {
         'module-resolver',
         {
           alias: {
-            '@': './src', // o './src' si usas carpeta src
+            '@': './',
           },
         },
       ],

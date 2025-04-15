@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
 	View,
 	Text,
@@ -7,8 +7,6 @@ import {
 	KeyboardAvoidingView,
 	Platform,
 	ScrollView,
-	Image,
-	StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -21,9 +19,10 @@ import {
 	Eye,
 	EyeOff,
 } from 'lucide-react-native';
-import api from 'lib/api';
+import GoogleButton from 'components/GoogleButton';
+import signUpStyle from 'styles/auth/signup.style';
+import { registerUser } from 'services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import GoogleButton from '@/components/google-login.button';
 
 export default function SignUpScreen() {
 	const [fullName, setFullName] = useState('');
@@ -36,17 +35,12 @@ export default function SignUpScreen() {
 		password?: string;
 	}>({});
 
-	const isFormValid = () => {
-		const passwordRegex =
-			/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/;
-
-		return (
-			fullName.trim().length > 0 &&
-			/\S+@\S+\.\S+/.test(email) &&
-			password.length >= 6 &&
-			passwordRegex.test(password)
-		);
-	};
+	const [passwordRules, setPasswordRules] = useState({
+		hasMinLength: false,
+		hasUppercase: false,
+		hasLowercase: false,
+		hasNumberOrSymbol: false,
+	});
 
 	const validate = () => {
 		const newErrors: typeof errors = {};
@@ -59,16 +53,15 @@ export default function SignUpScreen() {
 
 		if (!password) {
 			newErrors.password = 'Password is required';
-		} else if (password.length < 6) {
-			newErrors.password = 'Password must be at least 6 characters';
 		} else {
-			const passwordRegex =
+			const regex =
 				/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/;
 
-			if (!passwordRegex.test(password)) {
+			if (password.length < 6)
+				newErrors.password = 'Minimum 6 characters';
+			else if (!regex.test(password))
 				newErrors.password =
-					'Password must include uppercase, lowercase, and a number or symbol';
-			}
+					'Must include uppercase, lowercase, number or symbol';
 		}
 
 		setErrors(newErrors);
@@ -79,60 +72,65 @@ export default function SignUpScreen() {
 		if (!validate()) return;
 
 		try {
-			const response = await api.post('/auth/register', {
-				fullName,
-				email,
-				password,
-			});
+			const response = await registerUser({ fullName, email, password });
+			const token = response?.data?.token;
+			if (!token) {
+				setErrors({ email: 'Email already exists' });
+				return;
+			}
 
-			const result = response.data;
-			if (!result) return setErrors({ name: 'Invalid response' });
-			if (result.statusCode !== 201 || !result.data)
-				return setErrors({ name: result.message });
-
-			const { token } = result.data;
 			await AsyncStorage.setItem('token', token);
 			router.replace('/(tabs)/movies');
 		} catch (error: any) {
-			setErrors({ name: 'Server error, please try again later.' });
+			console.error(error);
+			setErrors({ name: 'Server error, please try again later' });
 		}
 	};
 
+	const isFormValid = () => {
+		return (
+			/\S+@\S+\.\S+/.test(email) &&
+			password.length > 0 &&
+			fullName.length > 0 &&
+			passwordRules.hasMinLength &&
+			passwordRules.hasUppercase &&
+			passwordRules.hasLowercase &&
+			passwordRules.hasNumberOrSymbol
+		);
+	};
+
 	return (
-		<SafeAreaView style={styles.safeArea}>
+		<SafeAreaView style={signUpStyle.safeArea}>
 			<KeyboardAvoidingView
 				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 				style={{ flex: 1 }}
 			>
-				<ScrollView contentContainerStyle={styles.scrollContent}>
-					{/* Back arrow */}
+				<ScrollView contentContainerStyle={signUpStyle.scrollContent}>
 					<TouchableOpacity
-						style={styles.backButton}
+						style={signUpStyle.backButton}
 						onPress={() => router.back()}
 					>
 						<ArrowLeft size={28} color="#1a1a1a" />
-						<Text style={styles.backText}>Back to Login</Text>
+						<Text style={signUpStyle.backText}>Back to Login</Text>
 					</TouchableOpacity>
 
-					{/* Header */}
-					<View style={styles.headerContainer}>
-						<Text style={styles.title}>Create Account</Text>
-						<Text style={styles.subtitle}>
+					<View style={signUpStyle.headerContainer}>
+						<Text style={signUpStyle.title}>Create Account</Text>
+						<Text style={signUpStyle.subtitle}>
 							Join CineReserve and start booking your favorite
 							movies
 						</Text>
 					</View>
 
-					{/* Form */}
-					<View style={styles.formContainer}>
-						<View style={styles.inputContainer}>
+					<View style={signUpStyle.formContainer}>
+						<View style={signUpStyle.inputContainer}>
 							<User
-								size={20}
+								size={25}
 								color="#666"
-								style={styles.inputIcon}
+								style={signUpStyle.inputIcon}
 							/>
 							<TextInput
-								style={styles.input}
+								style={signUpStyle.input}
 								placeholder="Full Name"
 								value={fullName}
 								onChangeText={(text) => {
@@ -147,17 +145,19 @@ export default function SignUpScreen() {
 							/>
 						</View>
 						{errors.name && (
-							<Text style={styles.errorText}>{errors.name}</Text>
+							<Text style={signUpStyle.errorText}>
+								{errors.name}
+							</Text>
 						)}
 
-						<View style={styles.inputContainer}>
+						<View style={signUpStyle.inputContainer}>
 							<Mail
-								size={20}
+								size={25}
 								color="#666"
-								style={styles.inputIcon}
+								style={signUpStyle.inputIcon}
 							/>
 							<TextInput
-								style={styles.input}
+								style={signUpStyle.input}
 								placeholder="Email"
 								value={email}
 								onChangeText={(text) => {
@@ -173,17 +173,19 @@ export default function SignUpScreen() {
 							/>
 						</View>
 						{errors.email && (
-							<Text style={styles.errorText}>{errors.email}</Text>
+							<Text style={signUpStyle.errorText}>
+								{errors.email}
+							</Text>
 						)}
 
-						<View style={styles.inputContainer}>
+						<View style={signUpStyle.inputContainer}>
 							<Lock
-								size={20}
+								size={25}
 								color="#666"
-								style={styles.inputIcon}
+								style={signUpStyle.inputIcon}
 							/>
 							<TextInput
-								style={styles.input}
+								style={signUpStyle.input}
 								placeholder="Password"
 								value={password}
 								onChangeText={(text) => {
@@ -192,6 +194,12 @@ export default function SignUpScreen() {
 										...e,
 										password: undefined,
 									}));
+									setPasswordRules({
+										hasMinLength: text.length >= 6,
+										hasUppercase: /[A-Z]/.test(text),
+										hasLowercase: /[a-z]/.test(text),
+										hasNumberOrSymbol: /\d|\W/.test(text),
+									});
 								}}
 								secureTextEntry={!showPassword}
 								placeholderTextColor="#666"
@@ -200,54 +208,94 @@ export default function SignUpScreen() {
 								onPress={() => setShowPassword(!showPassword)}
 							>
 								{showPassword ? (
-									<EyeOff size={20} color="#999" />
+									<EyeOff size={25} color="#999" />
 								) : (
-									<Eye size={20} color="#999" />
+									<Eye size={25} color="#999" />
 								)}
 							</TouchableOpacity>
 						</View>
 						{errors.password && (
-							<Text style={styles.errorText}>
+							<Text style={signUpStyle.errorText}>
 								{errors.password}
 							</Text>
 						)}
 
-						<Text style={styles.termsText}>
+						<View style={{ marginVertical: 10 }}>
+							{[
+								{
+									key: 'hasMinLength',
+									label: 'At least 6 characters',
+								},
+								{
+									key: 'hasUppercase',
+									label: 'One uppercase letter',
+								},
+								{
+									key: 'hasLowercase',
+									label: 'One lowercase letter',
+								},
+								{
+									key: 'hasNumberOrSymbol',
+									label: 'One number or symbol',
+								},
+							].map((rule) => (
+								<Text
+									key={rule.key}
+									style={{
+										color: passwordRules[
+											rule.key as keyof typeof passwordRules
+										]
+											? 'green'
+											: '#999',
+										fontSize: 15,
+										marginBottom: 2,
+									}}
+								>
+									{passwordRules[
+										rule.key as keyof typeof passwordRules
+									]
+										? '✓'
+										: '•'}{' '}
+									{rule.label}
+								</Text>
+							))}
+						</View>
+
+						<Text style={signUpStyle.termsText}>
 							By signing up, you agree to our{' '}
-							<Text style={styles.linkText}>
+							<Text style={signUpStyle.linkText}>
 								Terms of Service
 							</Text>{' '}
 							and{' '}
-							<Text style={styles.linkText}>Privacy Policy</Text>.
+							<Text style={signUpStyle.linkText}>
+								Privacy Policy
+							</Text>
+							.
 						</Text>
 
-						{/* Signup Button */}
 						<TouchableOpacity
 							style={[
-								styles.signUpButton,
-								!isFormValid() && styles.disabledButton,
+								signUpStyle.signUpButton,
+								!isFormValid() && signUpStyle.disabledButton,
 							]}
 							onPress={handleSignUp}
 							disabled={!isFormValid()}
 						>
-							<Text style={styles.signUpButtonText}>
+							<Text style={signUpStyle.signUpButtonText}>
 								Create Account
 							</Text>
-							<ArrowRight size={20} color="#fff" />
+							<ArrowRight size={25} color="#fff" />
 						</TouchableOpacity>
 
-						{/* Divider */}
-						<View style={styles.divider}>
-							<View style={styles.dividerLine} />
-							<Text style={styles.dividerText}>
+						<View style={signUpStyle.divider}>
+							<View style={signUpStyle.dividerLine} />
+							<Text style={signUpStyle.dividerText}>
 								or continue with
 							</Text>
-							<View style={styles.dividerLine} />
+							<View style={signUpStyle.dividerLine} />
 						</View>
 
-						{/* Social login buttons */}
-						{/* Google Sign Up only */}
-						<View style={styles.googleContainer}>
+						<View style={signUpStyle.googleContainer}>
 							<GoogleButton
 								setErrors={setErrors}
 								isLogin={false}
@@ -259,113 +307,3 @@ export default function SignUpScreen() {
 		</SafeAreaView>
 	);
 }
-
-const styles = StyleSheet.create({
-	safeArea: {
-		flex: 1,
-		backgroundColor: '#fff',
-	},
-	scrollContent: {
-		flexGrow: 1,
-		padding: 24,
-		backgroundColor: '#fff',
-	},
-	backButton: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		marginBottom: 24,
-	},
-	backText: {
-		marginLeft: 10,
-		fontSize: 18,
-		fontWeight: 'bold',
-		color: '#1a1a1a',
-	},
-	headerContainer: {
-		marginBottom: 24,
-	},
-	title: {
-		fontSize: 32,
-		fontWeight: 'bold',
-		color: '#1a1a1a',
-		marginBottom: 6,
-	},
-	subtitle: {
-		fontSize: 16,
-		color: '#666',
-		lineHeight: 24,
-	},
-	formContainer: {
-		width: '100%',
-	},
-	inputContainer: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		backgroundColor: '#f5f5f5',
-		borderRadius: 12,
-		marginBottom: 8,
-		paddingHorizontal: 16,
-		height: 56,
-	},
-	inputIcon: {
-		marginRight: 12,
-	},
-	input: {
-		flex: 1,
-		fontSize: 16,
-		color: '#1a1a1a',
-	},
-	errorText: {
-		color: '#E50914',
-		fontSize: 13,
-		marginBottom: 12,
-		marginLeft: 8,
-	},
-	termsText: {
-		fontSize: 14,
-		color: '#666',
-		marginVertical: 16,
-		lineHeight: 20,
-	},
-	linkText: {
-		color: '#E50914',
-		textDecorationLine: 'underline',
-	},
-	signUpButton: {
-		backgroundColor: '#E50914',
-		borderRadius: 12,
-		height: 56,
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'center',
-		marginBottom: 24,
-	},
-	disabledButton: {
-		backgroundColor: '#ccc',
-	},
-	signUpButtonText: {
-		color: '#fff',
-		fontSize: 18,
-		fontWeight: '600',
-		marginRight: 8,
-	},
-	divider: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		marginBottom: 24,
-	},
-	dividerLine: {
-		flex: 1,
-		height: 1,
-		backgroundColor: '#e1e1e1',
-	},
-	dividerText: {
-		color: '#666',
-		paddingHorizontal: 12,
-		fontSize: 14,
-	},
-	googleContainer: {
-		alignItems: 'center',
-		marginBottom: 24,
-	},
-});
