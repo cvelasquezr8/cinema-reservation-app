@@ -67,7 +67,9 @@ export default function MovieDetailScreen() {
 		>
 			<View style={movieDetailStyle.header}>
 				<Image
-					source={require('assets/images/cinema-background.jpeg')}
+					source={{
+						uri: movie.backdropUrl,
+					}}
 					style={movieDetailStyle.backdrop}
 				/>
 				<View style={movieDetailStyle.overlay} />
@@ -133,37 +135,52 @@ export default function MovieDetailScreen() {
 					</Text>
 				</View>
 
-				<View style={movieDetailStyle.section}>
-					<Text style={movieDetailStyle.sectionTitle}>Cast</Text>
-					<ScrollView
-						horizontal
-						showsHorizontalScrollIndicator={false}
-						contentContainerStyle={movieDetailStyle.castContainer}
-						decelerationRate="fast"
-						snapToInterval={CAST_CARD_WIDTH + CAST_CARD_MARGIN}
-						snapToAlignment="start"
-					>
-						{movie.cast.map((castMember, index) =>
-							renderCastCard(castMember, index),
-						)}
-					</ScrollView>
-				</View>
+				{movie.cast.length > 0 && (
+					<View style={movieDetailStyle.section}>
+						<Text style={movieDetailStyle.sectionTitle}>Cast</Text>
+						<ScrollView
+							horizontal
+							showsHorizontalScrollIndicator={false}
+							contentContainerStyle={
+								movieDetailStyle.castContainer
+							}
+							decelerationRate="fast"
+							snapToInterval={CAST_CARD_WIDTH + CAST_CARD_MARGIN}
+							snapToAlignment="start"
+						>
+							{movie.cast.map((castMember, index) =>
+								renderCastCard(castMember, index),
+							)}
+						</ScrollView>
+					</View>
+				)}
 
-				{/* {movie.director && (
+				{movie.directorInfo && (
 					<>
-						<Text style={styles.sectionTitle}>Director</Text>
-						<View style={styles.directorCard}>
+						<Text style={movieDetailStyle.sectionTitle}>
+							Director
+						</Text>
+						<View style={movieDetailStyle.directorCard}>
 							<Image
-								source={{ uri: movie.director.photo }}
-								style={styles.directorPhoto}
+								source={{
+									uri: movie.directorInfo.photo ?? '',
+								}}
+								style={movieDetailStyle.directorPhoto}
 							/>
-							<View style={styles.directorInfo}>
-								<Text style={styles.directorName}>{movie.director.name}</Text>
-								<Text style={styles.directorBio}>{movie.director.biography}</Text>
+							<View style={movieDetailStyle.directorInfo}>
+								<Text style={movieDetailStyle.directorName}>
+									{movie.directorInfo.name}
+								</Text>
+								<Text style={movieDetailStyle.directorBio}>
+									{movie.directorInfo.biography?.slice(
+										0,
+										110,
+									) + '...'}
+								</Text>
 							</View>
 						</View>
 					</>
-				)} */}
+				)}
 
 				<TouchableOpacity
 					style={movieDetailStyle.buyButton}
