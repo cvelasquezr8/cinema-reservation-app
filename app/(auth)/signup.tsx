@@ -73,7 +73,7 @@ export default function SignUpScreen() {
 
 		try {
 			const response = await registerUser({ fullName, email, password });
-			const token = response?.data?.token;
+			const token = response?.token;
 			if (!token) {
 				setErrors({ email: 'Email already exists' });
 				return;

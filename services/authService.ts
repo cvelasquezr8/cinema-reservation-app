@@ -40,3 +40,8 @@ export const resetPassword = async ({
 	});
 	return data;
 };
+
+export const getProfile = async () => {
+	const { data = null } = await api.get('/auth/me');
+	return data;
+};

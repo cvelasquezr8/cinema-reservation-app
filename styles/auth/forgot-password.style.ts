@@ -6,6 +6,7 @@ const forgotPasswordStyle = StyleSheet.create({
 	},
 	scrollContent: {
 		flexGrow: 1,
+		paddingTop: 15,
 	},
 	header: {
 		flexDirection: 'row',

@@ -49,12 +49,11 @@ export default function LoginScreen() {
 
 		try {
 			const response = await loginUser({ email, password });
-			const token = response?.data?.token;
+			const token = response?.token;
 			if (!token) throw new Error('Invalid token');
 			await AsyncStorage.setItem('token', token);
 			router.replace('/(tabs)/movies');
 		} catch (error: any) {
-			console.error(error);
 			setErrors({ email: 'Invalid email or password' });
 		}
 	};

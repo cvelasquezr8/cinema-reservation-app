@@ -10,7 +10,7 @@ import {
 	NativeScrollEvent,
 } from 'react-native';
 import { Search } from 'lucide-react-native';
-import { Movie } from 'models/Movie';
+import { MovieModel } from 'models/movie.model';
 import MovieCardList from 'components/MovieCardList';
 import { fetchMovies } from 'services/movieService';
 import movieListStyle from 'styles/movies/movies-list.style';
@@ -36,7 +36,7 @@ const GENRES = [
 const MOVIES_PER_PAGE = 4;
 
 export default function MoviesScreen() {
-	const [allMovies, setAllMovies] = useState<Movie[]>([]);
+	const [allMovies, setAllMovies] = useState<MovieModel[]>([]);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [selectedGenre, setSelectedGenre] = useState('All');
 	const [page, setPage] = useState(1);
@@ -47,7 +47,7 @@ export default function MoviesScreen() {
 			setLoading(true);
 			try {
 				const response = await fetchMovies();
-				setAllMovies(response?.data || []);
+				setAllMovies(response || []);
 			} catch (err) {
 				console.error('Error fetching movies:', err);
 			} finally {

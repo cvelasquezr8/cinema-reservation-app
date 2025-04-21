@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { Movie } from 'models/Movie';
+import { MovieModel } from 'models/movie.model';
 
 interface MovieStore {
-	selectedMovie: Movie | null;
-	setSelectedMovie: (movie: Movie) => void;
+	selectedMovie: MovieModel | null;
+	setSelectedMovie: (movie: MovieModel) => void;
 	clearSelectedMovie: () => void;
 }
 

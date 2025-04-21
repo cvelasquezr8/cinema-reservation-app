@@ -1,7 +1,8 @@
-import { Dimensions, StyleSheet } from 'react-native';
+import { Dimensions, Platform, StyleSheet } from 'react-native';
 const { width } = Dimensions.get('window');
 const CAST_CARD_WIDTH = width * 0.7;
 const CAST_CARD_MARGIN = 16;
+const HEADER_HEIGHT = Platform.OS === 'ios' ? 90 : 70;
 
 const movieDetailStyle = StyleSheet.create({
 	container: { flex: 1, backgroundColor: '#fff' },
@@ -187,6 +188,56 @@ const movieDetailStyle = StyleSheet.create({
 		color: '#fff',
 		fontSize: 18,
 		fontWeight: '600',
+	},
+	backButton: {
+		width: 40,
+		height: 40,
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	fixedHeader: {
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		right: 0,
+		height: HEADER_HEIGHT,
+		backgroundColor: '#fff',
+		flexDirection: 'row',
+		alignItems: 'center',
+		paddingHorizontal: 16,
+		paddingTop: Platform.OS === 'ios' ? 44 : 25,
+		zIndex: 1000,
+		borderBottomWidth: 1,
+		borderBottomColor: '#f5f5f5',
+	},
+	fixedHeaderTitle: {
+		flex: 1,
+		fontSize: 18,
+		fontWeight: '600',
+		color: '#1a1a1a',
+		marginHorizontal: 16,
+		textAlign: 'center',
+	},
+	placeholder: {
+		width: 40,
+	},
+	floatingBackButton: {
+		position: 'absolute',
+		top: Platform.OS === 'ios' ? 44 : 30,
+		left: 16,
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		justifyContent: 'center',
+		alignItems: 'center',
+		zIndex: 1000,
+	},
+	hideFloatingButton: {
+		opacity: 0,
+	},
+	scrollView: {
+		flex: 1,
 	},
 });
 

@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Star } from 'lucide-react-native';
-import { Movie } from 'models/Movie';
+import { MovieModel } from 'models/movie.model';
 import { useMovieStore } from 'store/movieStore';
 import { router } from 'expo-router';
 
 interface Props {
-	movies: Movie[];
+	movies: MovieModel[];
 }
 
 export default function MovieCardList({ movies }: Props) {

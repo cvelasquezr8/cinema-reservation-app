@@ -18,12 +18,12 @@ import {
 	EyeOff,
 	Eye,
 } from 'lucide-react-native';
-import forgotPasswordStyle from 'styles/auth/forgot-password.style';
 import {
 	forgotPassword,
 	resetPassword,
 	verifyCode,
 } from 'services/authService';
+import forgotPasswordStyle from 'styles/auth/forgot-password.style';
 
 type Step = 'email' | 'verification' | 'new-password';
 
@@ -79,58 +79,49 @@ export default function ForgotPasswordScreen() {
 	const handleSendCode = async () => {
 		if (!isEmailValid()) return;
 
-		setIsSubmitting(true);
 		try {
+			setIsSubmitting(true);
 			const response = await forgotPassword(email);
-			if (!response || !response.data) {
-				throw new Error('Invalid response');
-			}
-
+			if (!response) throw new Error('Invalid response');
 			setStep('verification');
 		} catch (error: any) {
-			console.log(error);
 			setErrors({ email: 'Invalid email.' });
+		} finally {
+			setIsSubmitting(false);
 		}
-		setIsSubmitting(false);
 	};
 
 	const handleVerifyCode = async () => {
 		if (!isValidCode()) return;
 
-		setIsSubmitting(true);
 		try {
+			setIsSubmitting(true);
 			const response = await verifyCode(verificationCode);
-			console.log({ response });
-			if (!response || !response.data) {
-				throw new Error('Invalid response verification');
-			}
-
+			if (!response) throw new Error('Invalid response verification');
 			setStep('new-password');
 		} catch (error: any) {
-			console.log(error);
 			setErrors({ code: 'Invalid code.' });
+		} finally {
+			setIsSubmitting(false);
 		}
-		setIsSubmitting(false);
 	};
 
 	const handleResetPassword = async () => {
 		if (!isPasswordValid()) return;
-		setIsSubmitting(true);
 
 		try {
+			setIsSubmitting(true);
 			const response = await resetPassword({
 				newPassword,
 				code: verificationCode,
 			});
-			if (!response || !response.data) {
-				throw new Error('Invalid response verification');
-			}
 
-			setIsSubmitting(false);
+			if (!response) throw new Error('Invalid response verification');
 			router.replace('/');
 		} catch (error) {
-			console.log(error);
 			setErrors({ tokenCode: 'Invalid token code.' });
+		} finally {
+			setIsSubmitting(false);
 		}
 	};
 
