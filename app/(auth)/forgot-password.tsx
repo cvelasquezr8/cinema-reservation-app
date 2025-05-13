@@ -125,6 +125,29 @@ export default function ForgotPasswordScreen() {
 		}
 	};
 
+	const passwordRulesList = [
+		{
+			key: 'hasMinLength',
+			label: 'At least 6 characters',
+		},
+		{
+			key: 'hasUppercase',
+			label: 'One uppercase letter',
+		},
+		{
+			key: 'hasLowercase',
+			label: 'One lowercase letter',
+		},
+		{
+			key: 'hasNumberOrSymbol',
+			label: 'One number or symbol',
+		},
+		{
+			key: 'isTheSame',
+			label: 'Passwords match',
+		},
+	];
+
 	const renderEmailStep = () => (
 		<>
 			<View style={forgotPasswordStyle.infoSection}>
@@ -320,28 +343,7 @@ export default function ForgotPasswordScreen() {
 				</View>
 
 				<View style={{ marginVertical: 10 }}>
-					{[
-						{
-							key: 'hasMinLength',
-							label: 'At least 6 characters',
-						},
-						{
-							key: 'hasUppercase',
-							label: 'One uppercase letter',
-						},
-						{
-							key: 'hasLowercase',
-							label: 'One lowercase letter',
-						},
-						{
-							key: 'hasNumberOrSymbol',
-							label: 'One number or symbol',
-						},
-						{
-							key: 'isTheSame',
-							label: 'Passwords match',
-						},
-					].map((rule) => (
+					{passwordRulesList.map((rule) => (
 						<Text
 							key={rule.key}
 							style={{

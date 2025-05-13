@@ -8,8 +8,9 @@ import {
 	Platform,
 	ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
 	Mail,
 	Lock,
@@ -19,10 +20,12 @@ import {
 	Eye,
 	EyeOff,
 } from 'lucide-react-native';
-import GoogleButton from 'components/GoogleButton';
-import signUpStyle from 'styles/auth/signup.style';
+
+import { GoogleButton, NotificationModal } from 'components';
 import { registerUser } from 'services/authService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNotification } from 'hooks/useNotification';
+import { TokenType } from 'types/login.type';
+import signUpStyle from 'styles/auth/signup.style';
 
 export default function SignUpScreen() {
 	const [fullName, setFullName] = useState('');
@@ -41,6 +44,9 @@ export default function SignUpScreen() {
 		hasLowercase: false,
 		hasNumberOrSymbol: false,
 	});
+
+	const { notification, showNotification, hideNotification } =
+		useNotification();
 
 	const validate = () => {
 		const newErrors: typeof errors = {};
@@ -71,20 +77,33 @@ export default function SignUpScreen() {
 	const handleSignUp = async () => {
 		if (!validate()) return;
 
-		try {
-			const response = await registerUser({ fullName, email, password });
-			const token = response?.token;
-			if (!token) {
-				setErrors({ email: 'Email already exists' });
-				return;
-			}
+		const response = (await registerUser({
+			fullName,
+			email,
+			password,
+		})) as TokenType | null;
 
-			await AsyncStorage.setItem('token', token);
-			router.replace('/(tabs)/movies');
-		} catch (error: any) {
-			console.error(error);
-			setErrors({ name: 'Server error, please try again later' });
+		if (!response) {
+			showNotification(
+				'error',
+				'Server Error',
+				'An error occurred while signing up',
+			);
+			return;
 		}
+
+		const token = response?.token;
+		if (!token) {
+			showNotification(
+				'error',
+				'Login Failed',
+				'Invalid email or password',
+			);
+			return;
+		}
+
+		await AsyncStorage.setItem('token', token);
+		router.replace('/(tabs)/movies');
 	};
 
 	const isFormValid = () => {
@@ -105,6 +124,14 @@ export default function SignUpScreen() {
 				behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 				style={{ flex: 1 }}
 			>
+				<NotificationModal
+					visible={notification.visible}
+					type={notification.type}
+					title={notification.title}
+					message={notification.message}
+					onClose={hideNotification}
+				/>
+
 				<ScrollView contentContainerStyle={signUpStyle.scrollContent}>
 					<TouchableOpacity
 						style={signUpStyle.backButton}
@@ -296,10 +323,7 @@ export default function SignUpScreen() {
 						</View>
 
 						<View style={signUpStyle.googleContainer}>
-							<GoogleButton
-								setErrors={setErrors}
-								isLogin={false}
-							/>
+							<GoogleButton isLogin={false} />
 						</View>
 					</View>
 				</ScrollView>

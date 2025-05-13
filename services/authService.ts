@@ -1,47 +1,38 @@
-import api from 'lib/api';
+import { getRequest, postRequest } from './apiService';
 
-export const loginUser = async (credentials: {
+type LoginPayload = {
 	email: string;
 	password: string;
-}) => {
-	const { data = null } = await api.post('/auth/login', credentials);
-	return data;
 };
 
-export const registerUser = async (user: {
+type RegisterPayload = {
 	fullName: string;
 	email: string;
 	password: string;
-}) => {
-	const { data = null } = await api.post('/auth/register', user);
-	return data;
 };
 
-export const forgotPassword = async (email: string) => {
-	const { data = null } = await api.post('/auth/forgot-password', { email });
-	return data;
+type LoginGooglePayload = {
+	accessToken: string;
+	idToken: string;
 };
 
-export const verifyCode = async (code: string) => {
-	const { data = null } = await api.post('/auth/verify-reset-code', { code });
-	return data;
-};
+// Auth actions
+export const loginUser = (credentials: LoginPayload) =>
+	postRequest('/auth/login', credentials);
 
-export const resetPassword = async ({
-	newPassword,
-	code,
-}: {
-	newPassword: string;
-	code: string;
-}) => {
-	const { data = null } = await api.post('/auth/reset-password', {
-		newPassword,
-		code,
-	});
-	return data;
-};
+export const loginWithGoogle = (credentials: LoginGooglePayload) =>
+	postRequest('/auth/google', credentials);
 
-export const getProfile = async () => {
-	const { data = null } = await api.get('/auth/me');
-	return data;
-};
+export const registerUser = (user: RegisterPayload) =>
+	postRequest('/auth/register', user);
+
+export const forgotPassword = (email: string) =>
+	postRequest('/auth/forgot-password', { email });
+
+export const verifyCode = (code: string) =>
+	postRequest('/auth/verify-reset-code', { code });
+
+export const resetPassword = (payload: { newPassword: string; code: string }) =>
+	postRequest('/auth/reset-password', payload);
+
+export const getProfile = () => getRequest('/auth/me');

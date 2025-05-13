@@ -1,38 +1,79 @@
-import React from 'react';
-import { TouchableOpacity, Image, Text, StyleSheet } from 'react-native';
-import { useGoogleAuthViewModel } from 'features/auth/viewModels/useGoogleAuthViewModel';
+import React, { useEffect, useState } from 'react';
+import {
+	TouchableOpacity,
+	Image,
+	Text,
+	StyleSheet,
+	ActivityIndicator,
+} from 'react-native';
+import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { useGoogleAuth } from 'lib/auth/useGoogleAuth';
+import { loginWithGoogle } from 'services/authService';
+import { TokenType } from 'types/login.type';
 
 interface GoogleButtonProps {
-	setErrors: (errors: { email: string }) => void;
 	isLogin: boolean;
 }
 
-export default function GoogleButton({
-	setErrors,
-	isLogin,
-}: GoogleButtonProps) {
-	const { promptAsync, request } = useGoogleAuthViewModel(setErrors);
+export default function GoogleButton({ isLogin }: GoogleButtonProps) {
+	const [loading, setLoading] = useState(false);
+	const [request, response, promptAsync] = useGoogleAuth();
+
+	useEffect(() => {
+		if (response?.type === 'success' && response.authentication) {
+			const { accessToken, idToken } = response.authentication;
+			if (accessToken && idToken) {
+				handleGoogleLogin(accessToken, idToken);
+			}
+		}
+	}, [response]);
+
+	const handleGoogleLogin = async (accessToken: string, idToken: string) => {
+		console.log({ accessToken });
+		console.log({ idToken });
+		try {
+			setLoading(true);
+			const response = (await loginWithGoogle({
+				accessToken,
+				idToken,
+			})) as TokenType | null;
+
+			const token = response?.token;
+			if (!token) throw new Error('No token received from Google login');
+
+			await AsyncStorage.setItem('token', token);
+			router.replace('/(tabs)/movies');
+		} catch (err) {
+			console.error('Google login error:', err);
+		} finally {
+			setLoading(false);
+		}
+	};
 
 	return (
 		<TouchableOpacity
-			disabled={!request}
-			onPress={() =>
-				promptAsync().catch((e) => {
-					console.error('Google login prompt error:', e);
-					setErrors({
-						email: 'Google login failed. Try again later.',
-					});
-				})
-			}
-			style={styles.googleButton}
+			disabled={!request || loading}
+			onPress={() => promptAsync()}
+			style={[
+				styles.googleButton,
+				loading && styles.googleButtonDisabled,
+			]}
 		>
-			<Image
-				source={require('assets/images/google-logo.png')}
-				style={styles.googleIcon}
-			/>
-			<Text style={styles.googleText}>
-				{isLogin ? 'Login' : 'Sign up'} with Google
-			</Text>
+			{loading ? (
+				<ActivityIndicator size="small" color="#1a1a1a" />
+			) : (
+				<>
+					<Image
+						source={require('assets/images/google-logo.png')}
+						style={styles.googleIcon}
+					/>
+					<Text style={styles.googleText}>
+						{isLogin ? 'Login' : 'Sign up'} with Google
+					</Text>
+				</>
+			)}
 		</TouchableOpacity>
 	);
 }
@@ -54,6 +95,9 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.1,
 		shadowRadius: 6,
 		elevation: 3,
+	},
+	googleButtonDisabled: {
+		opacity: 0.6,
 	},
 	googleIcon: {
 		width: 26,

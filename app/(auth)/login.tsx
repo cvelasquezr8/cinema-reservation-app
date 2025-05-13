@@ -11,10 +11,13 @@ import {
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
-import GoogleButton from 'components/GoogleButton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { GoogleButton, NotificationModal } from 'components';
 import { loginUser } from 'services/authService';
+import { useNotification } from 'hooks/useNotification';
 import loginStyle from 'styles/auth/login.style';
+import { TokenType } from 'types/login.type';
 
 export default function LoginScreen() {
 	const [email, setEmail] = useState('');
@@ -25,8 +28,10 @@ export default function LoginScreen() {
 		password?: string;
 	}>({});
 
-	const isFormValid = () => /\S+@\S+\.\S+/.test(email) && password.length > 0;
+	const { notification, showNotification, hideNotification } =
+		useNotification();
 
+	const isFormValid = () => /\S+@\S+\.\S+/.test(email) && password.length > 0;
 	const validate = () => {
 		const newErrors: typeof errors = {};
 
@@ -47,15 +52,32 @@ export default function LoginScreen() {
 	const handleLogin = async () => {
 		if (!validate()) return;
 
-		try {
-			const response = await loginUser({ email, password });
-			const token = response?.token;
-			if (!token) throw new Error('Invalid token');
-			await AsyncStorage.setItem('token', token);
-			router.replace('/(tabs)/movies');
-		} catch (error: any) {
-			setErrors({ email: 'Invalid email or password' });
+		const response = (await loginUser({
+			email,
+			password,
+		})) as TokenType | null;
+
+		if (!response) {
+			showNotification(
+				'error',
+				'Server Error',
+				'An error occurred while logging in',
+			);
+			return;
 		}
+
+		const token = response?.token;
+		if (!token) {
+			showNotification(
+				'error',
+				'Login Failed',
+				'Invalid email or password',
+			);
+			return;
+		}
+
+		await AsyncStorage.setItem('token', token);
+		router.replace('/(tabs)/movies');
 	};
 
 	return (
@@ -63,6 +85,14 @@ export default function LoginScreen() {
 			behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
 			style={loginStyle.container}
 		>
+			<NotificationModal
+				visible={notification.visible}
+				type={notification.type}
+				title={notification.title}
+				message={notification.message}
+				onClose={hideNotification}
+			/>
+
 			<ScrollView contentContainerStyle={{ flexGrow: 1 }}>
 				{/* Hero */}
 				<View style={loginStyle.heroSection}>
@@ -182,7 +212,7 @@ export default function LoginScreen() {
 
 					{/* Social login */}
 					<View style={loginStyle.googleContainer}>
-						<GoogleButton setErrors={setErrors} isLogin={true} />
+						<GoogleButton isLogin={true} />
 					</View>
 				</View>
 			</ScrollView>
