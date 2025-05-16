@@ -7,19 +7,17 @@ import { router } from 'expo-router';
 
 interface Props {
 	movies: MovieModel[];
+	onMovieSelect: (movie: MovieModel) => void;
 }
 
-export default function MovieCardList({ movies }: Props) {
+export default function MovieCardList({ movies, onMovieSelect }: Props) {
 	return (
 		<>
 			{movies.map((movie) => (
 				<TouchableOpacity
 					key={movie.id}
 					style={styles.card}
-					onPress={() => {
-						useMovieStore.getState().setSelectedMovie(movie);
-						router.push(`/movies/${movie.id}`);
-					}}
+					onPress={() => onMovieSelect(movie)}
 				>
 					<Image
 						source={{ uri: movie.posterUrl }}

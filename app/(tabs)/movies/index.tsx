@@ -14,6 +14,8 @@ import { MovieModel } from 'models/movie.model';
 import MovieCardList from 'components/MovieCardList';
 import { fetchMovies } from 'services/movieService';
 import movieListStyle from 'styles/movies/movies-list.style';
+import { useMovieStore } from 'store/movieStore';
+import { router } from 'expo-router';
 
 const GENRES = [
 	'All',
@@ -162,7 +164,15 @@ export default function MoviesScreen() {
 					</View>
 				) : (
 					<>
-						<MovieCardList movies={displayedMovies} />
+						<MovieCardList
+							movies={displayedMovies}
+							onMovieSelect={(movie) => {
+								useMovieStore
+									.getState()
+									.setSelectedMovie(movie);
+								router.push(`/movies/${movie.id}`);
+							}}
+						/>
 						{loading && (
 							<View style={movieListStyle.loadingContainer}>
 								<ActivityIndicator

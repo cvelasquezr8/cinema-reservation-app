@@ -97,8 +97,8 @@ const seatScreenStyle = StyleSheet.create({
 		flex: 1,
 	},
 	seatsContent: {
-		padding: 20,
-		gap: 20,
+		padding: 15,
+		gap: 12,
 	},
 	row: {
 		flexDirection: 'row',

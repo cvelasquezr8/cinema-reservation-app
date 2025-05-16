@@ -10,6 +10,13 @@ interface DirectorInfo {
 	biography: string | null;
 }
 
+interface Showtime {
+	id: string;
+	time: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export interface MovieModel {
 	id: string;
 	title: string;
@@ -24,5 +31,5 @@ export interface MovieModel {
 	description: string;
 	cast: Cast[];
 	directorInfo: DirectorInfo;
-	showtimes: string[];
+	showtimes: Showtime[];
 }

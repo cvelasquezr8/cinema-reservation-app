@@ -317,7 +317,7 @@ export default function ProfileScreen() {
 					'numeric',
 				)}
 
-				<TouchableOpacity
+				{/* <TouchableOpacity
 					style={[
 						profileStyle.button,
 						isEditing && profileStyle.saveButton,
@@ -339,7 +339,7 @@ export default function ProfileScreen() {
 							{isEditing ? 'Save Changes' : 'Edit Profile'}
 						</Text>
 					)}
-				</TouchableOpacity>
+				</TouchableOpacity> */}
 
 				{isEditing && (
 					<TouchableOpacity

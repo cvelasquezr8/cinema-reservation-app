@@ -1,43 +1,88 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 
 import seatScreenStyle from 'styles/movies/seats-screen.style';
 import { useMovieStore } from 'store/movieStore';
+import { fetchMovieShowtimes } from 'services/reservationService';
+
+interface Showtime {
+	id: string;
+	time: string;
+	createdAt: string;
+	updatedAt: string;
+}
 
 const SEATS_PER_ROW = 8;
-
-// Mock showtimes data
-const SHOWTIMES = [
-	{ id: 1, time: '10:30 AM', occupiedSeats: ['A1', 'A2', 'B5'] },
-	{ id: 2, time: '1:00 PM', occupiedSeats: ['C3', 'C4', 'D1', 'D2'] },
-	{ id: 3, time: '4:30 PM', occupiedSeats: ['B3', 'B4', 'E5', 'E6'] },
-	{ id: 4, time: '7:00 PM', occupiedSeats: ['A4', 'A5', 'C1', 'C2'] },
-	{ id: 5, time: '9:30 PM', occupiedSeats: ['D4', 'D5', 'E1', 'E2'] },
-];
-
 const ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+
+function convertTo24Hour(time: string): string {
+	const match = time.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
+	if (!match) throw new Error(`Invalid time format: ${time}`);
+
+	let [_, hours, minutes, modifier] = match;
+	let hrs = parseInt(hours, 10);
+
+	if (modifier.toUpperCase() === 'PM' && hrs !== 12) hrs += 12;
+	if (modifier.toUpperCase() === 'AM' && hrs === 12) hrs = 0;
+
+	return `${hrs.toString().padStart(2, '0')}:${minutes}`;
+}
+
+function sortByTimeAsc(data: Showtime[]): Showtime[] {
+	return [...data].sort((a, b) => {
+		const timeA = new Date(`1970-01-01T${convertTo24Hour(a.time)}:00`);
+		const timeB = new Date(`1970-01-01T${convertTo24Hour(b.time)}:00`);
+		return timeA.getTime() - timeB.getTime();
+	});
+}
 
 export default function SeatsScreen() {
 	const { id } = useLocalSearchParams();
-	console.log('🚀 ~ SeatsScreen ~ id:', id);
+	const movieId = typeof id === 'string' ? id : '';
 	const movie = useMovieStore((state) => state.selectedMovie);
-	console.log('🚀 ~ SeatsScreen ~ movie:', movie);
-	const [selectedShowtime, setSelectedShowtime] = useState(SHOWTIMES[0]);
-	const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+	console.log({ movie });
+	const showtimes = sortByTimeAsc((movie?.showtimes ?? []) as Showtime[]);
+	console.log({ showtimes });
+	const selectedSeats = useMovieStore((state) => state.selectedSeats);
+	const selectedShowtime =
+		useMovieStore((state) => state.selectedShowtime) ??
+		showtimes[0] ??
+		null;
+
+	const setSelectedSeats = useMovieStore((state) => state.setSelectedSeats);
+	const setSelectedShowtime = useMovieStore(
+		(state) => state.setSelectedShowtime,
+	);
+
+	const [reservedSeats, setReservedSeats] = useState<string[]>([]);
+
+	useEffect(() => {
+		const loadReservedSeats = async () => {
+			if (!selectedShowtime) return;
+			try {
+				const response = await fetchMovieShowtimes(selectedShowtime.id);
+				console.log(response);
+				if (Array.isArray(response)) setReservedSeats(response);
+				else setReservedSeats([]);
+			} catch (error) {
+				console.error('Error loading reserved seats:', error);
+				setReservedSeats([]);
+			}
+		};
+
+		loadReservedSeats();
+		setSelectedSeats([]);
+	}, [selectedShowtime?.id]);
 
 	const handleSeatPress = (seatId: string) => {
-		if (selectedShowtime.occupiedSeats.includes(seatId)) {
-			return;
+		if (reservedSeats.includes(seatId)) return;
+		if (selectedSeats.includes(seatId)) {
+			setSelectedSeats(selectedSeats.filter((seat) => seat !== seatId));
+		} else {
+			setSelectedSeats([...selectedSeats, seatId]);
 		}
-
-		setSelectedSeats((prev) => {
-			if (prev.includes(seatId)) {
-				return prev.filter((seat) => seat !== seatId);
-			}
-			return [...prev, seatId];
-		});
 	};
 
 	const handleConfirm = () => {
@@ -49,19 +94,24 @@ export default function SeatsScreen() {
 			return;
 		}
 
-		router.push({
-			pathname: `/movies/${id}/confirmation`,
-			params: {
-				seats: selectedSeats.join(','),
-				showtime: selectedShowtime.time,
-			},
-		});
+		if (selectedShowtime) {
+			setSelectedShowtime(selectedShowtime);
+		}
+
+		setSelectedSeats(selectedSeats);
+
+		router.push(`/movies/${movieId}/confirmation`);
+	};
+
+	const handleShowtimeChange = (showtime: Showtime) => {
+		setSelectedShowtime(showtime);
+		setSelectedSeats([]);
 	};
 
 	const renderSeat = (row: string, seatNumber: number) => {
 		const seatId = `${row}${seatNumber}`;
 		const isSelected = selectedSeats.includes(seatId);
-		const isOccupied = selectedShowtime.occupiedSeats.includes(seatId);
+		const isOccupied = reservedSeats.includes(seatId);
 
 		return (
 			<TouchableOpacity
@@ -87,18 +137,16 @@ export default function SeatsScreen() {
 		);
 	};
 
-	const renderRow = (row: string) => {
-		return (
-			<View key={row} style={seatScreenStyle.row}>
-				<Text style={seatScreenStyle.rowLabel}>{row}</Text>
-				<View style={seatScreenStyle.seats}>
-					{Array.from({ length: SEATS_PER_ROW }, (_, i) =>
-						renderSeat(row, i + 1),
-					)}
-				</View>
+	const renderRow = (row: string) => (
+		<View key={row} style={seatScreenStyle.row}>
+			<Text style={seatScreenStyle.rowLabel}>{row}</Text>
+			<View style={seatScreenStyle.seats}>
+				{Array.from({ length: SEATS_PER_ROW }, (_, i) =>
+					renderSeat(row, i + 1),
+				)}
 			</View>
-		);
-	};
+		</View>
+	);
 
 	return (
 		<View style={seatScreenStyle.container}>
@@ -121,20 +169,20 @@ export default function SeatsScreen() {
 					showsHorizontalScrollIndicator={false}
 					contentContainerStyle={seatScreenStyle.showtimesList}
 				>
-					{SHOWTIMES.map((showtime) => (
+					{showtimes.map((showtime) => (
 						<TouchableOpacity
 							key={showtime.id}
 							style={[
 								seatScreenStyle.showtimeButton,
-								selectedShowtime.id === showtime.id &&
+								selectedShowtime?.id === showtime.id &&
 									seatScreenStyle.showtimeButtonActive,
 							]}
-							onPress={() => setSelectedShowtime(showtime)}
+							onPress={() => handleShowtimeChange(showtime)}
 						>
 							<Text
 								style={[
 									seatScreenStyle.showtimeText,
-									selectedShowtime.id === showtime.id &&
+									selectedShowtime?.id === showtime.id &&
 										seatScreenStyle.showtimeTextActive,
 								]}
 							>
